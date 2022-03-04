@@ -186,13 +186,12 @@ def _newsample(nnn, ratio):
         return random.sample(nnn, ratio)
 
 def get_train_input(session, train_file_path, npratio=4):
-    '''
-    Generate training input
-    :param session (list): list of user session with user_id, clicks, positive and negative interactions
-    :param train_file_path (str): path to the train file
-    :param npratio (int): ratio of negative samples to positive samples
-    :return:
-    '''
+    """Generate train file.
+    Args:
+        session (list): List of user session with user_id, clicks, positive and negative interactions.
+        train_file_path (str): Path to file.
+        npration (int): Ratio for negative sampling.
+    """
     fp_train = open(train_file_path, "w", encoding="utf-8")
     for sess_id in range(len(session)):
         sess = session[sess_id]
@@ -200,37 +199,38 @@ def get_train_input(session, train_file_path, npratio=4):
         for i in range(len(poss)):
             pos = poss[i]
             neg = _newsample(negs, npratio)
-            fp_train.write("1" + "train_" + userid + " " + pos + "\n")
+            fp_train.write("1 " + "train_" + userid + " " + pos + "\n")
             for neg_ins in neg:
-                fp_train.write("0" + "train_" + userid + " " + neg_ins + "\n")
+                fp_train.write("0 " + "train_" + userid + " " + neg_ins + "\n")
     fp_train.close()
     if os.path.isfile(train_file_path):
-        logger.info(f"Training file {train_file_path} is generated.")
+        logger.info(f"Train file {train_file_path} successfully generated")
     else:
-        raise FileNotFoundError(f"Error when generating training file {train_file_path}.")
+        raise FileNotFoundError(f"Error when generating {train_file_path}")
+
 
 def get_valid_input(session, valid_file_path):
-    '''
-    Generate validation input
-    :param session (list): list of user session with user_id, clicks, positive and negative interactions
-    :param valid_file_path (str): path to the valid file
-    :return:
-    '''
+    """Generate validation file.
+    Args:
+        session (list): List of user session with user_id, clicks, positive and negative interactions.
+        valid_file_path (str): Path to file.
+    """
     fp_valid = open(valid_file_path, "w", encoding="utf-8")
     for sess_id in range(len(session)):
-        sess = session[sess_id]
-        userid, _, poss, negs = sess
+        userid, _, poss, negs = session[sess_id]
         for i in range(len(poss)):
-            pos = poss[i]
-            neg = _newsample(negs, 1)
-            fp_valid.write("1" + "valid_" + userid + " " + pos + "%" + str(sess_id)+"\n")
-        for neg_ins in neg:
-            fp_valid.write("0" + "valid_" + userid + " " + neg_ins + "\n")
+            fp_valid.write(
+                "1 " + "valid_" + userid + " " + poss[i] + "%" + str(sess_id) + "\n"
+            )
+        for i in range(len(negs)):
+            fp_valid.write(
+                "0 " + "valid_" + userid + " " + negs[i] + "%" + str(sess_id) + "\n"
+            )
     fp_valid.close()
     if os.path.isfile(valid_file_path):
-        logger.info(f"Validation file {valid_file_path} is generated.")
+        logger.info(f"Validation file {valid_file_path} successfully generated")
     else:
-        raise FileNotFoundError(f"Error when generating validation file {valid_file_path}.")
+        raise FileNotFoundError(f"Error when generating {valid_file_path}")
 
 def get_user_history(train_history, valid_history, user_history_path):
     """Generate user history file.

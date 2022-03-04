@@ -3,8 +3,6 @@ import sys
 import os
 from tempfile import TemporaryDirectory
 import logging
-import papermill as pm
-import scrapbook as sb
 import tensorflow as tf
 tf.get_logger().setLevel('ERROR') # only show error messages
 

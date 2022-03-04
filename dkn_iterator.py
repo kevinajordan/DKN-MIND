@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-from reco_utils.recommender.deeprec.io.iterator import BaseIterator
+from iterator import BaseIterator
 
 
 __all__ = ["DKNTextIterator"]

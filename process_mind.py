@@ -148,14 +148,17 @@ def extract_mind(train_zip, valid_zip, train_folder="train", valid_folder="valid
     return train_path, valid_path
 
 def read_clickhistory(path, filename):
-    """
-    Read the clickhistory file.
-    :param path (str): Path to the clickhistory file.
-    :param filename (str): Name of the clickhistory file.
-    :return:
+    """Read click history file
+    Args:
+        path (str): Folder path
+        filename (str): Filename
+    Returns:
+        list, dict: 
+        - A list of user session with user_id, clicks, positive and negative interactions. 
+        - A dictionary with user_id click history.
     """
     userid_history = {}
-    with open(os.path.join(path,filename)) as f:
+    with open(os.path.join(path, filename)) as f:
         lines = f.readlines()
     sessions = []
     for i in range(len(lines)):
@@ -170,7 +173,7 @@ def read_clickhistory(path, filename):
             else:
                 neg.append(imp.split("-")[0])
         userid_history[userid] = clicks
-        sessions.append([userid, pos, neg])
+        sessions.append([userid, clicks, pos, neg])
     return sessions, userid_history
 
 def _newsample(nnn, ratio):

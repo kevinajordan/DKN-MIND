@@ -41,16 +41,20 @@ def main():
     print("Starting data preparation...")
     train_zip, valid_zip = download_mind(size=MIND_SIZE, dest_path=data_path)
     train_path, valid_path = extract_mind(train_zip, valid_zip)
+    
     print ("Reading click history...")
     train_session, train_history = read_clickhistory(train_path, "behaviors.tsv")
     valid_session, valid_history = read_clickhistory(valid_path, "behaviors.tsv")
+    
     print ("Generating training and validation files...")
     get_train_input(train_session, train_file)
     get_valid_input(valid_session, valid_file)
+    
     print("Getting user history...")
     get_user_history(train_history, valid_history, user_history_file)
     train_news = os.path.join(train_path, "news.tsv")
     valid_news = os.path.join(valid_path, "news.tsv")
+    
     print("Generating embeddings...")
     news_words, news_entities = get_words_and_entities(train_news, valid_news)
     train_entities = os.path.join(train_path, "entity_embedding.vec")

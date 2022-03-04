@@ -1,7 +1,7 @@
 import os
-import logging
 import requests
 import math
+import logging
 import numpy as np
 import re
 from nltk.tokenize import RegexpTokenizer
@@ -12,7 +12,7 @@ from tqdm import tqdm
 import random
 from retrying import retry
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 URL_MIND_LARGE_TRAIN = (
     "https://mind201910small.blob.core.windows.net/release/MINDlarge_train.zip"
@@ -60,7 +60,7 @@ def try_download(url, filename=None, work_directory=".", expected_bytes=None):
     if not os.path.exists(filepath):
         r = requests.get(url, stream=True)
         if r.status_code == 200:
-            log.info(f'Downloading {filename} from {url}')
+            logger.info(f'Downloading {filename} from {url}')
             total_size = int(r.headers.get('content-length', 0));
             block_size = 1024
             num_iterables = math.ceil(total_size / block_size)
@@ -68,12 +68,12 @@ def try_download(url, filename=None, work_directory=".", expected_bytes=None):
                 for data in tqdm(r.iter_content(block_size), total=num_iterables, unit='KB', unit_scale=True):
                     f.write(data)
         else:
-            log.error(f'Could not download {filename} from {url}')
+            logger.error(f'Could not download {filename} from {url}')
             r.raise_for_status()
     if expected_bytes is not None:
         statinfo = os.stat(filepath)
         if statinfo.st_size != expected_bytes:
-            log.error(f'Failed to verify {filename} from {url}')
+            logger.error(f'Failed to verify {filename} from {url}')
             raise Exception(f'Failed to verify {filename} from {url}')
     
     return filepath
@@ -177,16 +177,11 @@ def read_clickhistory(path, filename):
     return sessions, userid_history
 
 def _newsample(nnn, ratio):
-    """
-    Sample a number of negative samples.
-    :param nnn (int): Number of negative samples.
-    :param ratio (float): Ratio of negative samples to positive samples.
-    :return:
-    """
     if ratio > len(nnn):
-        return random.sample(nnn * (ratio //len(nnn)+ 1), ratio)
+        return random.sample(nnn * (ratio // len(nnn) + 1), ratio)
     else:
         return random.sample(nnn, ratio)
+
 
 def get_train_input(session, train_file_path, npratio=4):
     """Generate train file.

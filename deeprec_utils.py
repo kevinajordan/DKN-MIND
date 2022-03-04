@@ -13,7 +13,7 @@ import json
 import pickle as pkl
 import tensorflow as tf
 
-from process_mind import maybe_download
+from process_mind import try_download
 
 
 def flat_config(config):
@@ -490,7 +490,7 @@ def download_deeprec_resources(azure_container_url, data_path, remote_resource_n
     """
     os.makedirs(data_path, exist_ok=True)
     remote_path = azure_container_url + remote_resource_name
-    maybe_download(remote_path, remote_resource_name, data_path)
+    try_download(remote_path, remote_resource_name, data_path)
     zip_ref = zipfile.ZipFile(os.path.join(data_path, remote_resource_name), "r")
     zip_ref.extractall(data_path)
     zip_ref.close()

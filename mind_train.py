@@ -67,7 +67,7 @@ def main():
 
     # Create hyperparameters
     print("Creating hyperparameters...")
-    yaml_file = maybe_download(url="https://recodatasets.z20.web.core.windows.net/deeprec/deeprec/dkn/dkn_MINDsmall.yaml", 
+    yaml_file = try_download(url="https://recodatasets.z20.web.core.windows.net/deeprec/deeprec/dkn/dkn_MINDsmall.yaml", 
                            work_directory=data_path)
     hparams = prepare_hparams(yaml_file,
                             news_feature_file=news_feature_file,

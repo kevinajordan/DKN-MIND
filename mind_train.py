@@ -27,7 +27,7 @@ def main():
     tmpdir = TemporaryDirectory()
     MIND_SIZE = "small"
     # DKN parameters
-    epochs = 10
+    epochs = 30
     history_size = 50
     batch_size = 100
 
@@ -85,7 +85,9 @@ def main():
 
     # Train DKN
     print("Building DKN...")
-    model = DKN(hparams, DKNTextIterator)
+    strategy = tf.distribute.MirroredStrategy()
+    with strategy.scope():
+        model = DKN(hparams, DKNTextIterator)
 
     print("Training DKN...")
     model.fit(train_file, valid_file)

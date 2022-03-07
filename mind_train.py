@@ -88,6 +88,7 @@ def main():
     strategy = tf.distribute.MirroredStrategy()
     with strategy.scope():
         model = DKN(hparams, DKNTextIterator)
+        print(model.summary())
 
     print("Training DKN...")
     model.fit_generator(train_file, valid_file)

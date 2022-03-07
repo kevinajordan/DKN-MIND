@@ -90,7 +90,7 @@ def main():
         model = DKN(hparams, DKNTextIterator)
 
     print("Training DKN...")
-    model.fit(train_file, valid_file)
+    model.fit_generator(train_file, valid_file)
 
     # Evaluation
     print("Evaluating DKN...")

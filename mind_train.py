@@ -93,7 +93,7 @@ def main():
 
     # Train DKN
     print("-------------------------------------------------------")
-    print("Building DKN...")
+    print("Building DKN ...")
     print("-------------------------------------------------------")
     strategy = tf.distribute.MirroredStrategy(gpus)
     print('Number of GPU devices: {}'.format(strategy.num_replicas_in_sync))
@@ -104,20 +104,20 @@ def main():
     #model = DKN(hparams, DKNTextIterator)
 
     print("-------------------------------------------------------")
-    print("Training DKN...")
+    print("Training DKN ...")
     print("-------------------------------------------------------")
     model.fit(train_file, valid_file)
 
     # Evaluation
     print("-------------------------------------------------------")
-    print("Evaluating DKN...")
+    print("Evaluating DKN ...")
     print("-------------------------------------------------------")
     res = model.run_eval(valid_file)
     print(res)
 
     # Saving model
     print("-------------------------------------------------------")
-    print("Saving DKN...")
+    print("Saving DKN ...")
     print("-------------------------------------------------------")
     path = 'saved_model/'
     model.save(path, save_format='tf')

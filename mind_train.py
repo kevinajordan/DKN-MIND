@@ -91,6 +91,7 @@ def main():
     # Train DKN
     print("Building DKN...")
     strategy = tf.distribute.MirroredStrategy()
+    print('Number of GPU devices: {}'.format(strategy.num_replicas_in_sync))
     with strategy.scope():
         model = DKN(hparams, DKNTextIterator)
 
@@ -103,6 +104,11 @@ def main():
     print("Evaluating DKN...")
     res = model.run_eval(valid_file)
     print(res)
+
+    # Saving model
+    print("Saving DKN...")
+    path = 'saved_model/'
+    model.save(path, save_format='tf')
 
 if __name__ == "__main__":
     main()

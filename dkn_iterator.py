@@ -12,12 +12,14 @@ class DKNTextIterator(BaseIterator):
     DKN requires a special type of data format, where each instance contains a label, the candidate news article,
     and user's clicked news article. Articles are represented by title words and title entities. Words and entities
     are aligned.
+
     Iterator will not load the whole data into memory. Instead, it loads data into memory
     per mini-batch, so that large files can be used as input data.
     """
 
     def __init__(self, hparams, graph, col_spliter=" ", ID_spliter="%"):
         """Initialize an iterator. Create necessary placeholders for the model.
+
         Args:
             hparams (object): Global hyper-parameters. Some key setttings such as #_feature and #_field are there.
             graph (object): the running graph. All created placeholder will be added to this graph.
@@ -85,11 +87,14 @@ class DKNTextIterator(BaseIterator):
 
     def parser_one_line(self, line):
         """Parse one string line into feature values.
+
         Args:
             line (str): a string indicating one instance
+
         Returns:
             list: Parsed results including `label`, `candidate_news_index`, `click_news_index`,
             `candidate_news_entity_index`, `click_news_entity_index`, `impression_id`.
+
         """
         impression_id = 0
         words = line.strip().split(self.ID_spliter)
@@ -118,8 +123,10 @@ class DKNTextIterator(BaseIterator):
 
     def load_data_from_file(self, infile):
         """Read and parse data from a file.
+
         Args:
             infile (str): text input file. Each line in this file is an instance.
+
         Yields:
             obj, list, int:
             - An iterator that yields parsed results, in the format of graph `feed_dict`.
@@ -201,11 +208,13 @@ class DKNTextIterator(BaseIterator):
 
     def load_infer_data_from_file(self, infile):
         """Read and parse data from a file for infer document embedding.
+
         Args:
             infile (str): text input file. Each line in this file is an instance.
+
         Yields:
-            obj, list, int: 
-            - An iterator that yields parsed results, in the format of graph `feed_dict`. 
+            obj, list, int:
+            - An iterator that yields parsed results, in the format of graph `feed_dict`.
             - Impression id list.
             - Size of the data in a batch.
         """
@@ -264,6 +273,7 @@ class DKNTextIterator(BaseIterator):
         impression_id_list,
     ):
         """Convert data into numpy arrays that are good for further model operation.
+
         Args:
             label_list (list): a list of ground-truth labels.
             candidate_news_index_batch (list): the candidate news article's words indices
@@ -271,6 +281,7 @@ class DKNTextIterator(BaseIterator):
             candidate_news_entity_index_batch (list): the candidate news article's entities indices
             click_news_entity_index_batch (list): the user's clicked news article's entities indices
             impression_id_list (list) : the session's impression indices
+
         Returns:
             dict: A dictionary, containing multiple numpy arrays that are convenient for further operation.
         """
@@ -295,6 +306,7 @@ class DKNTextIterator(BaseIterator):
         self, candidate_news_index_batch, candidate_news_entity_index_batch
     ):
         """Convert data into numpy arrays that are good for further model operation.
+
         Args:
             candidate_news_index_batch (list): the candidate news article's words indices
             candidate_news_entity_index_batch (list): the candidate news article's entities indices
@@ -312,10 +324,13 @@ class DKNTextIterator(BaseIterator):
 
     def gen_feed_dict(self, data_dict):
         """Construct a dictionary that maps graph elements to values.
+
         Args:
             data_dict (dict): a dictionary that maps string name to numpy arrays.
+
         Returns:
             dict: A dictionary that maps graph elements to numpy arrays.
+
         """
         feed_dict = {
             self.labels: data_dict["labels"].reshape([-1, 1]),
@@ -336,10 +351,13 @@ class DKNTextIterator(BaseIterator):
 
     def gen_infer_feed_dict(self, data_dict):
         """Construct a dictionary that maps graph elements to values.
+
         Args:
             data_dict (dict): a dictionary that maps string name to numpy arrays.
+
         Returns:
             dict: A dictionary that maps graph elements to numpy arrays.
+
         """
         feed_dict = {
             self.candidate_news_index_batch: data_dict[

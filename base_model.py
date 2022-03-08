@@ -4,10 +4,10 @@ import time
 import os
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
 from deeprec_utils import cal_metric
 
 
+tf.compat.v1.disable_eager_execution()
 __all__ = ["BaseModel"]
 
 
@@ -17,8 +17,9 @@ class BaseModel:
     def __init__(self, hparams, iterator_creator, graph=None, seed=None):
         """Initializing the model. Create common logics which are needed by all deeprec models, such as loss function,
         parameter set.
+
         Args:
-            hparams (object): A `tf.contrib.training.HParams` object, hold the entire set of hyperparameters.
+            hparams (object): An `HParams` object, holds the entire set of hyperparameters.
             iterator_creator (object): An iterator to load the data.
             graph (object): An optional graph.
             seed (int): Random seed.
@@ -30,7 +31,7 @@ class BaseModel:
         self.graph = graph if graph is not None else tf.Graph()
         self.iterator = iterator_creator(hparams, self.graph)
         self.train_num_ngs = (
-            hparams.train_num_ngs if "train_num_ngs" in hparams else None
+            hparams.train_num_ngs if "train_num_ngs" in hparams.values() else None
         )
 
         with self.graph.as_default():
@@ -75,6 +76,7 @@ class BaseModel:
 
     def _get_loss(self):
         """Make loss function, consists of data loss and regularization loss
+
         Returns:
             object: Loss value.
         """
@@ -85,9 +87,11 @@ class BaseModel:
 
     def _get_pred(self, logit, task):
         """Make final output as prediction score, according to different tasks.
+
         Args:
             logit (object): Base prediction value.
             task (str): A task (values: regression/classification)
+
         Returns:
             object: Transformed score.
         """
@@ -130,64 +134,85 @@ class BaseModel:
         # embedding_layer l2 loss
         for param in self.embed_params:
             l1_loss = tf.add(
-                l1_loss, tf.multiply(self.hparams.embed_l1, tf.norm(param, ord=1))
+                l1_loss,
+                tf.multiply(self.hparams.embed_l1, tf.norm(tensor=param, ord=1)),
             )
         params = self.layer_params
         for param in params:
             l1_loss = tf.add(
-                l1_loss, tf.multiply(self.hparams.layer_l1, tf.norm(param, ord=1))
+                l1_loss,
+                tf.multiply(self.hparams.layer_l1, tf.norm(tensor=param, ord=1)),
             )
         return l1_loss
 
     def _cross_l_loss(self):
         """Construct L1-norm and L2-norm on cross network parameters for loss function.
+
         Returns:
             object: Regular loss value on cross network parameters.
         """
         cross_l_loss = tf.zeros([1], dtype=tf.float32)
         for param in self.cross_params:
             cross_l_loss = tf.add(
-                cross_l_loss, tf.multiply(self.hparams.cross_l1, tf.norm(param, ord=1))
+                cross_l_loss,
+                tf.multiply(self.hparams.cross_l1, tf.norm(tensor=param, ord=1)),
             )
             cross_l_loss = tf.add(
-                cross_l_loss, tf.multiply(self.hparams.cross_l2, tf.norm(param, ord=2))
+                cross_l_loss,
+                tf.multiply(self.hparams.cross_l2, tf.norm(tensor=param, ord=2)),
             )
         return cross_l_loss
 
     def _get_initializer(self):
         if self.hparams.init_method == "tnormal":
-            return tf.truncated_normal_initializer(
+            return tf.compat.v1.truncated_normal_initializer(
                 stddev=self.hparams.init_value, seed=self.seed
             )
         elif self.hparams.init_method == "uniform":
-            return tf.random_uniform_initializer(
+            return tf.compat.v1.random_uniform_initializer(
                 -self.hparams.init_value, self.hparams.init_value, seed=self.seed
             )
         elif self.hparams.init_method == "normal":
-            return tf.random_normal_initializer(
+            return tf.compat.v1.random_normal_initializer(
                 stddev=self.hparams.init_value, seed=self.seed
             )
         elif self.hparams.init_method == "xavier_normal":
-            return tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed)
+            return tf.compat.v1.keras.initializers.VarianceScaling(
+                scale=1.0,
+                mode="fan_avg",
+                distribution=("uniform" if False else "truncated_normal"),
+                seed=self.seed,
+            )
         elif self.hparams.init_method == "xavier_uniform":
-            return tf.contrib.layers.xavier_initializer(uniform=True, seed=self.seed)
+            return tf.compat.v1.keras.initializers.VarianceScaling(
+                scale=1.0,
+                mode="fan_avg",
+                distribution=("uniform" if True else "truncated_normal"),
+                seed=self.seed,
+            )
         elif self.hparams.init_method == "he_normal":
-            return tf.contrib.layers.variance_scaling_initializer(
-                factor=2.0, mode="FAN_IN", uniform=False, seed=self.seed
+            return tf.compat.v1.keras.initializers.VarianceScaling(
+                scale=2.0,
+                mode=("FAN_IN").lower(),
+                distribution=("uniform" if False else "truncated_normal"),
+                seed=self.seed,
             )
         elif self.hparams.init_method == "he_uniform":
-            return tf.contrib.layers.variance_scaling_initializer(
-                factor=2.0, mode="FAN_IN", uniform=True, seed=self.seed
+            return tf.compat.v1.keras.initializers.VarianceScaling(
+                scale=2.0,
+                mode=("FAN_IN").lower(),
+                distribution=("uniform" if True else "truncated_normal"),
+                seed=self.seed,
             )
         else:
-            return tf.truncated_normal_initializer(
+            return tf.compat.v1.truncated_normal_initializer(
                 stddev=self.hparams.init_value, seed=self.seed
             )
 
     def _compute_data_loss(self):
         if self.hparams.loss == "cross_entropy_loss":
             data_loss = tf.reduce_mean(
-                tf.nn.sigmoid_cross_entropy_with_logits(
+                input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
                     logits=tf.reshape(self.logit, [-1]),
                     labels=tf.reshape(self.iterator.labels, [-1]),
                 )
@@ -195,7 +220,7 @@ class BaseModel:
         elif self.hparams.loss == "square_loss":
             data_loss = tf.sqrt(
                 tf.reduce_mean(
-                    tf.squared_difference(
+                    input_tensor=tf.math.squared_difference(
                         tf.reshape(self.pred, [-1]),
                         tf.reshape(self.iterator.labels, [-1]),
                     )
@@ -203,7 +228,7 @@ class BaseModel:
             )
         elif self.hparams.loss == "log_loss":
             data_loss = tf.reduce_mean(
-                tf.compat.v1.losses.log_loss(
+                input_tensor=tf.compat.v1.losses.log_loss(
                     predictions=tf.reshape(self.pred, [-1]),
                     labels=tf.reshape(self.iterator.labels, [-1]),
                 )
@@ -214,11 +239,11 @@ class BaseModel:
             if self.hparams.model_type == "NextItNet":
                 labels = (
                     tf.transpose(
-                        tf.reshape(
+                        a=tf.reshape(
                             self.iterator.labels,
                             (-1, group, self.hparams.max_seq_length),
                         ),
-                        [0, 2, 1],
+                        perm=[0, 2, 1],
                     ),
                 )
                 labels = tf.reshape(labels, (-1, group))
@@ -227,8 +252,8 @@ class BaseModel:
             softmax_pred = tf.nn.softmax(logits, axis=-1)
             boolean_mask = tf.equal(labels, tf.ones_like(labels))
             mask_paddings = tf.ones_like(softmax_pred)
-            pos_softmax = tf.where(boolean_mask, softmax_pred, mask_paddings)
-            data_loss = -group * tf.reduce_mean(tf.math.log(pos_softmax))
+            pos_softmax = tf.compat.v1.where(boolean_mask, softmax_pred, mask_paddings)
+            data_loss = -group * tf.reduce_mean(input_tensor=tf.math.log(pos_softmax))
         else:
             raise ValueError("this loss not defined {0}".format(self.hparams.loss))
         return data_loss
@@ -236,14 +261,16 @@ class BaseModel:
     def _compute_regular_loss(self):
         """Construct regular loss. Usually it's comprised of l1 and l2 norm.
         Users can designate which norm to be included via config file.
+
         Returns:
             object: Regular loss.
         """
         regular_loss = self._l2_loss() + self._l1_loss() + self._cross_l_loss()
-        return tf.reduce_sum(regular_loss)
+        return tf.reduce_sum(input_tensor=regular_loss)
 
     def _train_opt(self):
         """Get the optimizer according to configuration. Usually we will use Adam.
+
         Returns:
             object: An optimizer.
         """
@@ -251,33 +278,32 @@ class BaseModel:
         optimizer = self.hparams.optimizer
 
         if optimizer == "adadelta":
-            train_step = tf.train.AdadeltaOptimizer(lr)
+            train_step = tf.compat.v1.train.AdadeltaOptimizer(lr)
         elif optimizer == "adagrad":
-            train_step = tf.train.AdagradOptimizer(lr)
+            train_step = tf.compat.v1.train.AdagradOptimizer(lr)
         elif optimizer == "sgd":
-            train_step = tf.train.GradientDescentOptimizer(lr)
+            train_step = tf.compat.v1.train.GradientDescentOptimizer(lr)
         elif optimizer == "adam":
             train_step = tf.compat.v1.train.AdamOptimizer(lr)
         elif optimizer == "ftrl":
-            train_step = tf.train.FtrlOptimizer(lr)
+            train_step = tf.compat.v1.train.FtrlOptimizer(lr)
         elif optimizer == "gd":
-            train_step = tf.train.GradientDescentOptimizer(lr)
+            train_step = tf.compat.v1.train.GradientDescentOptimizer(lr)
         elif optimizer == "padagrad":
-            train_step = tf.train.ProximalAdagradOptimizer(lr)
+            train_step = tf.compat.v1.train.ProximalAdagradOptimizer(lr)
         elif optimizer == "pgd":
-            train_step = tf.train.ProximalGradientDescentOptimizer(lr)
+            train_step = tf.compat.v1.train.ProximalGradientDescentOptimizer(lr)
         elif optimizer == "rmsprop":
-            train_step = tf.train.RMSPropOptimizer(lr)
-        elif optimizer == "lazyadam":
-            train_step = tf.contrib.opt.LazyAdamOptimizer(lr)
+            train_step = tf.compat.v1.train.RMSPropOptimizer(lr)
         else:
-            train_step = tf.train.GradientDescentOptimizer(lr)
+            train_step = tf.compat.v1.train.GradientDescentOptimizer(lr)
         return train_step
 
     def _build_train_opt(self):
         """Construct gradient descent based optimization step
         In this step, we provide gradient clipping option. Sometimes we what to clip the gradients
         when their absolute values are too large to avoid gradient explosion.
+
         Returns:
             object: An operation that applies the specified optimization step.
         """
@@ -294,10 +320,12 @@ class BaseModel:
 
     def _active_layer(self, logit, activation, layer_idx=-1):
         """Transform the input value with an activation. May use dropout.
+
         Args:
             logit (object): Input value.
             activation (str): A string indicating the type of activation function.
             layer_idx (int): Index of current layer. Used to retrieve corresponding parameters
+
         Returns:
             object: A tensor after applying activation function on logit.
         """
@@ -323,19 +351,23 @@ class BaseModel:
 
     def _dropout(self, logit, keep_prob):
         """Apply drops upon the input value.
+
         Args:
             logit (object): The input value.
             keep_prob (float): The probability of keeping each element.
+
         Returns:
             object: A tensor of the same shape of logit.
         """
-        return tf.nn.dropout(x=logit, keep_prob=keep_prob)
+        return tf.nn.dropout(x=logit, rate=1 - (keep_prob))
 
     def train(self, sess, feed_dict):
         """Go through the optimization step once with training data in `feed_dict`.
+
         Args:
             sess (object): The model session object.
             feed_dict (dict): Feed values to train the model. This is a dictionary that maps graph elements to values.
+
         Returns:
             list: A list of values, including update operation, total loss, data loss, and merged summary.
         """
@@ -354,9 +386,11 @@ class BaseModel:
 
     def eval(self, sess, feed_dict):
         """Evaluate the data in `feed_dict` with current model.
+
         Args:
             sess (object): The model session object.
             feed_dict (dict): Feed values for evaluation. This is a dictionary that maps graph elements to values.
+
         Returns:
             list: A list of evaluated results, including total loss value, data loss value, predicted scores, and ground-truth labels.
         """
@@ -366,9 +400,11 @@ class BaseModel:
 
     def infer(self, sess, feed_dict):
         """Given feature data (in `feed_dict`), get predicted scores with current model.
+
         Args:
             sess (object): The model session object.
             feed_dict (dict): Instances to predict. This is a dictionary that maps graph elements to values.
+
         Returns:
             list: Predicted scores for the given instances.
         """
@@ -378,8 +414,10 @@ class BaseModel:
 
     def load_model(self, model_path=None):
         """Load an existing model.
+
         Args:
             model_path: model path.
+
         Raises:
             IOError: if the restore operation failed.
         """
@@ -389,21 +427,23 @@ class BaseModel:
 
         try:
             self.saver.restore(self.sess, act_path)
-        except:
+        except Exception:
             raise IOError("Failed to find any matching files for {0}".format(act_path))
 
     def fit(self, train_file, valid_file, test_file=None):
         """Fit the model with `train_file`. Evaluate the model on valid_file per epoch to observe the training status.
         If `test_file` is not None, evaluate it too.
+
         Args:
             train_file (str): training data set.
             valid_file (str): validation set.
             test_file (str): test set.
+
         Returns:
             object: An instance of self.
         """
         if self.hparams.write_tfevents:
-            self.writer = tf.summary.FileWriter(
+            self.writer = tf.compat.v1.summary.FileWriter(
                 self.hparams.SUMMARIES_DIR, self.sess.graph
             )
 
@@ -440,9 +480,7 @@ class BaseModel:
                     os.makedirs(self.hparams.MODEL_DIR)
                 if epoch % self.hparams.save_epoch == 0:
                     save_path_str = join(self.hparams.MODEL_DIR, "epoch_" + str(epoch))
-                    checkpoint_path = self.saver.save(
-                        sess=train_sess, save_path=save_path_str
-                    )
+                    self.saver.save(sess=train_sess, save_path=save_path_str)
 
             eval_start = time.time()
             eval_res = self.run_eval(valid_file)
@@ -500,20 +538,22 @@ class BaseModel:
 
     def group_labels(self, labels, preds, group_keys):
         """Devide `labels` and `preds` into several group according to values in group keys.
+
         Args:
             labels (list): ground truth label list.
             preds (list): prediction score list.
             group_keys (list): group key list.
+
         Returns:
-            list, list: 
-            - Labels after group. 
+            list, list:
+            - Labels after group.
             - Predictions after group.
         """
         all_keys = list(set(group_keys))
         group_labels = {k: [] for k in all_keys}
         group_preds = {k: [] for k in all_keys}
-        for l, p, k in zip(labels, preds, group_keys):
-            group_labels[k].append(l)
+        for label, p, k in zip(labels, preds, group_keys):
+            group_labels[k].append(label)
             group_preds[k].append(p)
         all_labels = []
         all_preds = []
@@ -524,8 +564,10 @@ class BaseModel:
 
     def run_eval(self, filename):
         """Evaluate the given file and returns some evaluation metrics.
+
         Args:
             filename (str): A file name that will be evaluated.
+
         Returns:
             dict: A dictionary that contains evaluation metrics.
         """
@@ -541,7 +583,7 @@ class BaseModel:
             labels.extend(np.reshape(step_labels, -1))
             imp_indexs.extend(np.reshape(imp_index, -1))
         res = cal_metric(labels, preds, self.hparams.metrics)
-        if self.hparams.pairwise_metrics is not None:
+        if "pairwise_metrics" in self.hparams.values():
             group_labels, group_preds = self.group_labels(labels, preds, imp_indexs)
             res_pairwise = cal_metric(
                 group_labels, group_preds, self.hparams.pairwise_metrics
@@ -551,14 +593,16 @@ class BaseModel:
 
     def predict(self, infile_name, outfile_name):
         """Make predictions on the given data, and output predicted scores to a file.
+
         Args:
             infile_name (str): Input file name, format is same as train/val/test file.
             outfile_name (str): Output file name, each line is the predict score.
+
         Returns:
             object: An instance of self.
         """
         load_sess = self.sess
-        with tf.gfile.GFile(outfile_name, "w") as wt:
+        with tf.io.gfile.GFile(outfile_name, "w") as wt:
             for batch_data_input, _, data_size in self.iterator.load_data_from_file(
                 infile_name
             ):
@@ -572,24 +616,26 @@ class BaseModel:
 
     def _attention(self, inputs, attention_size):
         """Soft alignment attention implement.
+
         Args:
             inputs (object): Sequences ready to apply attention.
             attention_size (int): The dimension of attention operation.
+
         Returns:
             object: Weighted sum after attention.
         """
-        hidden_size = inputs.shape[2].value
+        hidden_size = inputs.shape[2]
         if not attention_size:
             attention_size = hidden_size
 
-        attention_mat = tf.get_variable(
+        attention_mat = tf.compat.v1.get_variable(
             name="attention_mat",
-            shape=[inputs.shape[-1].value, hidden_size],
+            shape=[inputs.shape[-1], hidden_size],
             initializer=self.initializer,
         )
         att_inputs = tf.tensordot(inputs, attention_mat, [[2], [0]])
 
-        query = tf.get_variable(
+        query = tf.compat.v1.get_variable(
             name="query",
             shape=[attention_size],
             dtype=tf.float32,
@@ -602,36 +648,40 @@ class BaseModel:
 
     def _fcn_net(self, model_output, layer_sizes, scope):
         """Construct the MLP part for the model.
+
         Args:
             model_output (object): The output of upper layers, input of MLP part
             layer_sizes (list): The shape of each layer of MLP part
             scope (object): The scope of MLP part
+
         Returns:
             object: Prediction logit after fully connected layer.
         """
         hparams = self.hparams
-        with tf.variable_scope(scope):
+        with tf.compat.v1.variable_scope(scope):
             last_layer_size = model_output.shape[-1]
             layer_idx = 0
             hidden_nn_layers = []
             hidden_nn_layers.append(model_output)
-            with tf.variable_scope("nn_part", initializer=self.initializer) as scope:
+            with tf.compat.v1.variable_scope(
+                "nn_part", initializer=self.initializer
+            ) as scope:
                 for idx, layer_size in enumerate(layer_sizes):
-                    curr_w_nn_layer = tf.get_variable(
+                    curr_w_nn_layer = tf.compat.v1.get_variable(
                         name="w_nn_layer" + str(layer_idx),
                         shape=[last_layer_size, layer_size],
                         dtype=tf.float32,
                     )
-                    curr_b_nn_layer = tf.get_variable(
+                    curr_b_nn_layer = tf.compat.v1.get_variable(
                         name="b_nn_layer" + str(layer_idx),
                         shape=[layer_size],
                         dtype=tf.float32,
-                        initializer=tf.zeros_initializer(),
+                        initializer=tf.compat.v1.zeros_initializer(),
                     )
-                    tf.summary.histogram(
+                    tf.compat.v1.summary.histogram(
                         "nn_part/" + "w_nn_layer" + str(layer_idx), curr_w_nn_layer
                     )
-                    tf.summary.histogram(
+                    tf.compat.v1.summary.histogram(
                         "nn_part/" + "b_nn_layer" + str(layer_idx), curr_b_nn_layer
                     )
                     curr_hidden_nn_layer = (
@@ -645,7 +695,7 @@ class BaseModel:
                     activation = hparams.activation[idx]
 
                     if hparams.enable_BN is True:
-                        curr_hidden_nn_layer = tf.layers.batch_normalization(
+                        curr_hidden_nn_layer = tf.compat.v1.layers.batch_normalization(
                             curr_hidden_nn_layer,
                             momentum=0.95,
                             epsilon=0.0001,
@@ -659,19 +709,19 @@ class BaseModel:
                     layer_idx += 1
                     last_layer_size = layer_size
 
-                w_nn_output = tf.get_variable(
+                w_nn_output = tf.compat.v1.get_variable(
                     name="w_nn_output", shape=[last_layer_size, 1], dtype=tf.float32
                 )
-                b_nn_output = tf.get_variable(
+                b_nn_output = tf.compat.v1.get_variable(
                     name="b_nn_output",
                     shape=[1],
                     dtype=tf.float32,
-                    initializer=tf.zeros_initializer(),
+                    initializer=tf.compat.v1.zeros_initializer(),
                 )
-                tf.summary.histogram(
+                tf.compat.v1.summary.histogram(
                     "nn_part/" + "w_nn_output" + str(layer_idx), w_nn_output
                 )
-                tf.summary.histogram(
+                tf.compat.v1.summary.histogram(
                     "nn_part/" + "b_nn_output" + str(layer_idx), b_nn_output
                 )
                 nn_output = (

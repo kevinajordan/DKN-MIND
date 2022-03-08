@@ -1,5 +1,4 @@
 import sys
-
 import os
 from tempfile import TemporaryDirectory
 import logging
@@ -7,16 +6,7 @@ import json
 import tensorflow as tf
 tf.get_logger().setLevel('ERROR') # only show error messages
 
-from process_mind  import try_download
-from process_mind import (download_mind, 
-                                     extract_mind, 
-                                     read_clickhistory, 
-                                     get_train_input, 
-                                     get_valid_input, 
-                                     get_user_history,
-                                     get_words_and_entities,
-                                     generate_embeddings) 
-from deeprec_utils import prepare_hparams
+from deeprec_utils import download_deeprec_resources, prepare_hparams
 from dkn import DKN
 from dkn_iterator import DKNTextIterator
 
@@ -31,6 +21,21 @@ def main():
     history_size = 50
     batch_size = 100
 
+    # Download and load MIND demo data
+    data_path = os.path.join(tmpdir.name, "mind-demo-dkn")
+
+    yaml_file = os.path.join(data_path, r'dkn.yaml')
+    train_file = os.path.join(data_path, r'train_mind_demo.txt')
+    valid_file = os.path.join(data_path, r'valid_mind_demo.txt')
+    test_file = os.path.join(data_path, r'test_mind_demo.txt')
+    news_feature_file = os.path.join(data_path, r'doc_feature.txt')
+    user_history_file = os.path.join(data_path, r'user_history.txt')
+    wordEmb_file = os.path.join(data_path, r'word_embeddings_100.npy')
+    entityEmb_file = os.path.join(data_path, r'TransE_entity2vec_100.npy')
+    contextEmb_file = os.path.join(data_path, r'TransE_context2vec_100.npy')
+    if not os.path.exists(yaml_file):
+        download_deeprec_resources(r'https://recodatasets.z20.web.core.windows.net/deeprec/', tmpdir.name, 'mind-demo-dkn.zip')
+    '''
     # Paths
     data_path = os.path.join(tmpdir.name, "mind-dkn")
     train_file = os.path.join(data_path, "train_mind.txt")
@@ -69,19 +74,19 @@ def main():
         max_sentence=10,
         word_embedding_dim=100,
     )
-
+    '''
     # Create hyperparameters
     print("Creating hyperparameters...")
-    yaml_file = try_download(url="https://recodatasets.z20.web.core.windows.net/deeprec/deeprec/dkn/dkn_MINDsmall.yaml", 
-                           work_directory=data_path)
     hparams = prepare_hparams(yaml_file,
-                            news_feature_file=news_feature_file,
-                            user_history_file=user_history_file,
-                            wordEmb_file=word_embeddings_file,
-                            entityEmb_file=entity_embeddings_file,
+                            news_feature_file = news_feature_file,
+                            user_history_file = user_history_file,
+                            wordEmb_file=wordEmb_file,
+                            entityEmb_file=entityEmb_file,
+                            contextEmb_file=contextEmb_file,
                             epochs=epochs,
                             history_size=history_size,
                             batch_size=batch_size)
+    print(hparams)
 
     # Train DKN
     print("Building DKN...")

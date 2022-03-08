@@ -44,7 +44,7 @@ URL_MIND = {
 }
 
 @retry(wait_random_min=1000, wait_random_max=5000, stop_max_attempt_number=5)
-def try_download(url, filename=None, work_directory=".", expected_bytes=None):
+def maybe_download(url, filename=None, work_directory=".", expected_bytes=None):
     """
     Download a file if it doesn't already exist.
     :param url (str): URL of the file to download.
@@ -124,8 +124,8 @@ def download_mind(size="large", dest_path=None):
         raise ValueError(f"Size must be one of {size_options}")
     url_train, url_valid = URL_MIND[size]
     with download_path(dest_path) as path:
-        train_path = try_download(url_train, work_directory=path)
-        valid_path = try_download(url_valid, work_directory=path)
+        train_path = maybe_download(url_train, work_directory=path)
+        valid_path = maybe_download(url_valid, work_directory=path)
     
     return train_path, valid_path
 
@@ -296,7 +296,7 @@ def download_and_extract_glove(dest_path):
         str: File path where Glove was extracted.  
     """
     url = "http://nlp.stanford.edu/data/glove.6B.zip"
-    filepath = try_download(url=url, work_directory=dest_path)
+    filepath = maybe_download(url=url, work_directory=dest_path)
     glove_path = os.path.join(dest_path, "glove")
     unzip_file(filepath, glove_path, clean_zip_file=False)
     return glove_path

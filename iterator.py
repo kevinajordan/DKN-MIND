@@ -9,6 +9,7 @@ class BaseIterator(object):
     @abc.abstractmethod
     def parser_one_line(self, line):
         """Abstract method. Parse one string line into feature values.
+
         Args:
             line (str): A string indicating one instance.
         """
@@ -17,6 +18,7 @@ class BaseIterator(object):
     @abc.abstractmethod
     def load_data_from_file(self, infile):
         """Abstract method. Read and parse data from a file.
+
         Args:
             infile (str): Text input file. Each line in this file is an instance.
         """
@@ -29,6 +31,7 @@ class BaseIterator(object):
     @abc.abstractmethod
     def gen_feed_dict(self, data_dict):
         """Abstract method. Construct a dictionary that maps graph elements to values.
+
         Args:
             data_dict (dict): A dictionary that maps string name to numpy arrays.
         """
@@ -43,6 +46,7 @@ class FFMTextIterator(BaseIterator):
 
     def __init__(self, hparams, graph, col_spliter=" ", ID_spliter="%"):
         """Initialize an iterator. Create the necessary placeholders for the model.
+
         Args:
             hparams (object): Global hyper-parameters. Some key settings such as #_feature and #_field are there.
             graph (object): The running graph. All created placeholder will be added to this graph.
@@ -57,33 +61,38 @@ class FFMTextIterator(BaseIterator):
 
         self.graph = graph
         with self.graph.as_default():
-            self.labels = tf.placeholder(tf.float32, [None, 1], name="label")
-            self.fm_feat_indices = tf.placeholder(
+            self.labels = tf.compat.v1.placeholder(tf.float32, [None, 1], name="label")
+            self.fm_feat_indices = tf.compat.v1.placeholder(
                 tf.int64, [None, 2], name="fm_feat_indices"
             )
-            self.fm_feat_values = tf.placeholder(
+            self.fm_feat_values = tf.compat.v1.placeholder(
                 tf.float32, [None], name="fm_feat_values"
             )
-            self.fm_feat_shape = tf.placeholder(tf.int64, [None], name="fm_feat_shape")
-            self.dnn_feat_indices = tf.placeholder(
+            self.fm_feat_shape = tf.compat.v1.placeholder(
+                tf.int64, [None], name="fm_feat_shape"
+            )
+            self.dnn_feat_indices = tf.compat.v1.placeholder(
                 tf.int64, [None, 2], name="dnn_feat_indices"
             )
-            self.dnn_feat_values = tf.placeholder(
+            self.dnn_feat_values = tf.compat.v1.placeholder(
                 tf.int64, [None], name="dnn_feat_values"
             )
-            self.dnn_feat_weights = tf.placeholder(
+            self.dnn_feat_weights = tf.compat.v1.placeholder(
                 tf.float32, [None], name="dnn_feat_weights"
             )
-            self.dnn_feat_shape = tf.placeholder(
+            self.dnn_feat_shape = tf.compat.v1.placeholder(
                 tf.int64, [None], name="dnn_feat_shape"
             )
 
     def parser_one_line(self, line):
         """Parse one string line into feature values.
+
         Args:
             line (str): A string indicating one instance.
+
         Returns:
             list: Parsed results, including `label`, `features` and `impression_id`.
+
         """
         impression_id = 0
         words = line.strip().split(self.ID_spliter)
@@ -105,8 +114,10 @@ class FFMTextIterator(BaseIterator):
 
     def load_data_from_file(self, infile):
         """Read and parse data from a file.
+
         Args:
             infile (str): Text input file. Each line in this file is an instance.
+
         Returns:
             object: An iterator that yields parsed results, in the format of graph `feed_dict`.
         """
@@ -115,7 +126,7 @@ class FFMTextIterator(BaseIterator):
         impression_id_list = []
         cnt = 0
 
-        with tf.gfile.GFile(infile, "r") as rd:
+        with tf.io.gfile.GFile(infile, "r") as rd:
             for line in rd:
                 label, features, impression_id = self.parser_one_line(line)
 
@@ -137,10 +148,12 @@ class FFMTextIterator(BaseIterator):
 
     def _convert_data(self, labels, features):
         """Convert data into numpy arrays that are good for further operation.
+
         Args:
             labels (list): a list of ground-truth labels.
             features (list): a 3-dimensional list, carrying a list (batch_size) of feature array,
                     where each feature array is a list of `[field_idx, feature_idx, feature_value]` tuple.
+
         Returns:
             dict: A dictionary, containing multiple numpy arrays that are convenient for further operation.
         """
@@ -204,10 +217,13 @@ class FFMTextIterator(BaseIterator):
 
     def gen_feed_dict(self, data_dict):
         """Construct a dictionary that maps graph elements to values.
+
         Args:
             data_dict (dict): A dictionary that maps string name to numpy arrays.
+
         Returns:
             dict: A dictionary that maps graph elements to numpy arrays.
+
         """
         feed_dict = {
             self.labels: data_dict["labels"],

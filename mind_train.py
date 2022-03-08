@@ -14,6 +14,9 @@ from dkn_iterator import DKNTextIterator
 def main():
     print(f"System version: {sys.version}")
     print(f"Tensorflow version: {tf.__version__}")
+    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    tf.debugging.set_log_device_placement(True)
+    gpus = tf.config.list_logical_devices('GPU')
     tmpdir = TemporaryDirectory()
     MIND_SIZE = "small"
     # DKN parameters
@@ -90,7 +93,7 @@ def main():
 
     # Train DKN
     print("Building DKN...")
-    strategy = tf.distribute.MirroredStrategy()
+    strategy = tf.distribute.MirroredStrategy(gpus)
     print('Number of GPU devices: {}'.format(strategy.num_replicas_in_sync))
     with strategy.scope():
         model = DKN(hparams, DKNTextIterator)

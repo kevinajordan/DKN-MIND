@@ -75,7 +75,7 @@ def load_news(path):
     news['abstract_entities'] = news['abstract_entities'].map(json.loads)
     return news
 
-def make_app(saved_model: str):
+def make_app(saved_model: str = 'final'):
     print("Creating model...")
     model = get_model(saved_model)
     print("Loading news...")
@@ -89,6 +89,80 @@ def make_app(saved_model: str):
     news = news[~news.index.duplicated(keep='first')]
     print("Ready.")
     app = Flask(__name__)
+
+    @app.route("/rank-ids")
+    @expects_json()
+    def rank_ids():
+        """
+        Takes a JSON object with arguments
+         - articles: [up to hist_size IDs]
+         - limit: integer for how many results to return (default 100)
+
+         All news IDs are strings in the form m/N[0-9]+/ .
+         The IDs in the array MUST exist in doc_feature.txt
+         """
+        inputs = request.get_json()
+        doc_size = model.hparams.doc_size
+        batch_size = model.hparams.batch_size
+        hist_size = model.hparams.history_size
+        it = model.iterator
+
+        request_keys = inputs['articles'][-hist_size:]
+        limit = inputs.get('limit', 100)
+
+        keys = sorted(it.news_word_index.keys())
+        subbatch_size = len(keys)//8
+        keys_arr = np.array(keys)
+
+        clicki = np.array([[it.news_word_index[k] for k in request_keys]])
+        clickei = np.array([[it.news_entity_index[k] for k in request_keys]])
+        extra_hist_pad = hist_size - clicki.shape[1]
+        clicki = np.pad(clicki, ((0,0), (0, extra_hist_pad), (0,0)), 'constant', constant_values=(0))
+        clickei = np.pad(clickei, ((0,0), (0, extra_hist_pad), (0,0)), 'constant', constant_values=(0))
+
+        scores = np.zeros((len(keys)), dtype=np.float32)
+        total_t = 0.0
+
+        for key_batch_i in range(8):
+            bk = keys[key_batch_i*subbatch_size: (key_batch_i+1)*subbatch_size]
+
+            news_word_rows = np.zeros((subbatch_size, doc_size))
+            news_ent_rows = np.zeros((subbatch_size, doc_size))
+
+            for i, k in enumerate(bk):
+                news_word_rows[i] = it.news_word_index[k]
+                news_ent_rows[i] = it.news_entity_index[k]
+
+            infer_start = perf_counter()
+
+            batch = model.iterator.gen_feed_dict({
+                'candidate_news_index_batch': news_word_rows,
+                'candidate_news_entity_index_batch': news_ent_rows,
+                'click_news_index_batch': np.repeat(clicki, batch_size, 0),
+                'click_news_entity_index_batch': np.repeat(clickei, batch_size, 0),
+                'labels': np.zeros(()),  # not used by inference
+
+            })
+
+            res = model.infer(model.sess, batch)[0].reshape((-1))
+            scores[key_batch_i*subbatch_size: (key_batch_i+1)*subbatch_size] = res
+
+            total_t += perf_counter() - infer_start
+
+        print(f"Inference took {total_t}s")
+        sort_idx = scores.argsort()[:-limit + 1:-1]
+        ret = keys_arr[sort_idx]
+
+        return jsonify([
+            {
+                "key": keys_arr[x],
+                "score": float(scores[x]),
+                "title": news.loc[keys_arr[x]].title,
+                "category": news.loc[keys_arr[x]].category,
+                "abstract": news.loc[keys_arr[x]].abstract,
+            }
+            for x in sort_idx
+        ])
 
     @app.route("/rank")
     @expects_json()

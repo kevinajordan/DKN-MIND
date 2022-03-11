@@ -476,10 +476,10 @@ class BaseModel:
             train_time = train_end - train_start
 
             if self.hparams.save_model:
-                if not os.path.exists(self.hparams.MODEL_DIR):
-                    os.makedirs(self.hparams.MODEL_DIR)
+                if not os.path.exists(self.hparams.model_dir):
+                    os.makedirs(self.hparams.model_dir)
                 if epoch % self.hparams.save_epoch == 0:
-                    save_path_str = join(self.hparams.MODEL_DIR, "epoch_" + str(epoch))
+                    save_path_str = join(self.hparams.model_dir, "epoch_" + str(epoch))
                     self.saver.save(sess=train_sess, save_path=save_path_str)
 
             eval_start = time.time()
@@ -530,6 +530,12 @@ class BaseModel:
                     epoch, train_time, eval_time
                 )
             )
+
+        if not os.path.exists(self.hparams.model_dir):
+            os.makedirs(self.hparams.model_dir)
+        if epoch % self.hparams.save_epoch == 0:
+            save_path_str = join(self.hparams.model_dir, "final")
+            self.saver.save(sess=train_sess, save_path=save_path_str)
 
         if self.hparams.write_tfevents:
             self.writer.close()

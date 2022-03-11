@@ -10,6 +10,7 @@ import numpy as np
 import yaml
 import zipfile
 import pickle as pkl
+from pathlib import Path
 
 from download_utils import maybe_download
 
@@ -146,10 +147,14 @@ def check_type(config):
         "user_vocab",
         "item_vocab",
         "cate_vocab",
+        "model_dir",
     ]
     for param in str_parameters:
         if param in config and not isinstance(config[param], str):
-            raise TypeError("Parameters {0} must be str".format(param))
+            if isinstance(config[param], Path):
+                config[param] = str(config[param])
+            else:
+                raise TypeError("Parameters {0} must be str".format(param))
 
     list_parameters = [
         "layer_sizes",
@@ -343,13 +348,16 @@ class HParams:
         Args:
             hparams_dict (dict): Dictionary with the model hyperparameters.
         """
-        for val in hparams_dict.values():
+        for key, val in hparams_dict.items():
             if not (
                 isinstance(val, int)
                 or isinstance(val, float)
                 or isinstance(val, str)
                 or isinstance(val, list)
             ):
+                if isinstance(val, Path):
+                    hparams_dict[key] = str(val)
+                    continue
                 raise ValueError(
                     "Hyperparameter value {} should be integer, float, string or list.".format(
                         val
@@ -456,6 +464,10 @@ def prepare_hparams(yaml_file=None, **kwargs):
             config[name] = value
 
     check_nn_config(config)
+
+    if config['save_model'] and not config.get('model_dir'):
+        raise ValueError("model_dir must be set")
+
     return create_hparams(config)
 
 
